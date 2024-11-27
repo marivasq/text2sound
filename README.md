@@ -4,12 +4,12 @@
 A DAW plugin that generates sound effects from textual descriptions using AI.
 
 ### Table of Contents
-* [Quickstart: How to download and use] (#quickstart)
-* [Training and evaluation] (#training-and-evaluation)
-* [Results] (#results)
-* [Customization options] (#customization-options)
+* [Quickstart: How to download and use](#quickstart)
+* [Training and evaluation](#training-and-evaluation)
+* [Results](#results)
+* [Customization options](#customization-options)
 
-Updates
+*Updates*
 
 # Quickstart
 ### How to download and use
