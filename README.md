@@ -4,7 +4,7 @@
 Description
 
 ### Table of Contents
-* Quickstart: How to download and use
+* Quickstart: How to download and use [Link Text](#quickstart)
 * Training and evaluation
 * Results
 * Customization options
