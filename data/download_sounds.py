@@ -54,11 +54,12 @@ def fetch_metadata(sound_id):
         detail_response = requests.get(url, headers=headers)
         if detail_response.status_code == 200:
             detail_data = detail_response.json()
+            # print(detail_data)
             description = detail_data.get("description", "N/A")
             num_downloads = detail_data.get("num_downloads", "N/A")
             duration = detail_data.get("duration", "N/A")
             license_url = detail_data.get("license", "N/A")
-            username = detail_data.get("user", {}).get("username", "N/A")
+            username = detail_data.get("username", "N/A")
         else:
             description = num_downloads = duration = license_url = username = "N/A"
         
@@ -72,20 +73,24 @@ def fetch_metadata(sound_id):
 def search_sounds(query, num_results=10, license_filter=None):
     params = {
         'query': query,
-        'fields': 'id,name,tags,previews,license',
+        'fields': 'id,name,tags,previews,license,num_downloads',
         'token': API_KEY,
+        'sort': 'num_downloads_desc',  # Sort by downloads in descending order
+        'page_size': num_results  # Fetch top 'num_results' per request
     }
     response = requests.get(BASE_URL + 'search/text/', params=params)
     
     if response.status_code == 200:
         results = response.json()
-        #print(results)
-        # Filter by license
+        
+        # Filter by license if applicable
         if license_filter:
             results['results'] = [sound for sound in results['results'] if sound['license'] in license_filter]
-        return results['results'][:num_results]
+        
+        return results['results']  # Return all results, already sorted by downloads
     else:
         print(f"Failed to fetch sounds: {response.status_code}")
+    
     return []
 
 
