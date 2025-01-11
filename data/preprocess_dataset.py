@@ -6,10 +6,14 @@ import soundfile as sf
 import noisereduce as nr
 
 # Define paths
-DATA_FOLDER = "dataset"
-RAW_AUDIO_FOLDER = os.path.join(DATA_FOLDER, "raw")
-PROCESSED_AUDIO_FOLDER = os.path.join(DATA_FOLDER, "processed")
-METADATA_FILE = os.path.join(DATA_FOLDER, "metadata.csv")
+BASE_DIR = os.path.join(os.getcwd(), 'dataset')
+
+RAW_AUDIO_FOLDER = os.path.join(BASE_DIR, 'raw')
+RAW_METADATA_FILE = os.path.join(BASE_DIR, 'raw_metadata.csv')
+
+PROCESSED_AUDIO_FOLDER = os.path.join(BASE_DIR, 'processed')
+PROCESSED_METADATA_FILE = os.path.join(BASE_DIR, 'processed_metadata.csv')
+
 
 # Ensure processed audio folder exists
 os.makedirs(PROCESSED_AUDIO_FOLDER, exist_ok=True)
@@ -89,12 +93,12 @@ def process_dataset():
     """
     Preprocess all audio files and update metadata.
     """
-    if not os.path.exists(METADATA_FILE):
+    if not os.path.exists(RAW_METADATA_FILE):
         print("Metadata file not found. Exiting.")
         return
 
     # Load metadata
-    with open(METADATA_FILE, mode='r') as file:
+    with open(PROCESSED_METADATA_FILE, mode='r') as file:
         reader = csv.reader(file)
         header = next(reader)
         rows = list(reader)
@@ -126,12 +130,11 @@ def process_dataset():
             print(f"Raw audio file not found: {raw_audio_path}")
 
     # Save updated metadata
-    updated_metadata_file = os.path.join(DATA_FOLDER, "processed_metadata.csv")
-    with open(updated_metadata_file, mode='w', newline='') as file:
+    with open(PROCESSED_METADATA_FILE, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(header)
         writer.writerows(updated_rows)
-    print(f"Metadata updated and saved to {updated_metadata_file}")
+    print(f"Metadata updated and saved to {PROCESSED_METADATA_FILE}")
 
 if __name__ == "__main__":
     process_dataset()
