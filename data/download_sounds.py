@@ -46,6 +46,7 @@ def authorize_user():
     """
     Directs the user to the authorization URL to log in and authorize the app.
     """
+    
     auth_url = f"{AUTH_URL}?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
     print(f"Opening the authorization URL. Log in and authorize the app: {auth_url}")
     webbrowser.open(auth_url)
@@ -83,6 +84,21 @@ def get_access_token(auth_code):
         raise Exception(f"Failed to obtain access token: {response.text}")
 
 def fetch_metadata(sound_id):
+    """
+    Collects the metadata for a given sound ID from the Freesound API.
+
+    Args:
+        sound_id (int or str): The ID of the sound to fetch metadata for.
+        
+    Returns:
+        tuple: A tuple containing the following metadata:
+            - tempo (str): The tempo (BPM) of the sound or "N/A" if not available.
+            - description (str): A brief description of the sound or "N/A" if not available.
+            - num_downloads (int or str): The number of times the sound has been downloaded, or "N/A" if not available.
+            - duration (float or str): The duration of the sound in seconds, or "N/A" if not available.
+            - license_url (str): The URL of the license for the sound, or "N/A" if not available.
+            - username (str): The username of the person who uploaded the sound, or "N/A" if not available.
+    """
     url = f'{BASE_URL}sounds/{sound_id}/'
     analysis_url = f"{BASE_URL}sounds/{sound_id}/analysis/"
     headers = {
@@ -101,7 +117,7 @@ def fetch_metadata(sound_id):
         detail_response = requests.get(url, headers=headers)
         if detail_response.status_code == 200:
             detail_data = detail_response.json()
-            # print(detail_data)
+            
             description = detail_data.get("description", "N/A")
             num_downloads = detail_data.get("num_downloads", "N/A")
             duration = detail_data.get("duration", "N/A")
@@ -118,6 +134,13 @@ def fetch_metadata(sound_id):
 
 
 def search_sounds(query, num_results=10, license_filter=None):
+    """
+    Collects (int) num_results sounds based on the query which denotes the category.
+
+    Returns:
+        array: An array of dictionaries where each one coressponds to a unique sound collected.
+    """
+
     params = {
         'query': query,
         'fields': 'id,name,tags,previews,license,num_downloads,download',
@@ -142,6 +165,10 @@ def search_sounds(query, num_results=10, license_filter=None):
 
 
 def download_sound(sound, metadata, access_token):
+    """
+    Downloads the original sound file and its coressponding metadata.
+    """
+
     sound_id = sound['id']
     sound_name = sound['name']
     tags = sound['tags']
