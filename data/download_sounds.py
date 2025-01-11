@@ -1,16 +1,24 @@
 import os
 import requests
 import csv
+import webbrowser
 
 # Set up the folder where the sounds will be saved
-BASE_SAVE_DIR = os.path.join(os.getcwd(), 'data', 'dataset')
+BASE_SAVE_DIR = os.path.join(os.getcwd(), 'dataset', 'raw')
 
 # Ensure the directory exists
 os.makedirs(BASE_SAVE_DIR, exist_ok=True)
 
 # FreeSound API settings
-API_KEY = '' # Replace with your key
 BASE_URL = 'https://freesound.org/apiv2/'
+
+# Replace these with your credentials
+CLIENT_ID = ''
+CLIENT_SECRET = ''
+REDIRECT_URI = "https://freesound.org/home/app_permissions/permission_granted/"
+TOKEN_URL = "https://freesound.org/apiv2/oauth2/access_token/"
+AUTH_URL = "https://freesound.org/apiv2/oauth2/authorize/"
+DOWNLOAD_URL_TEMPLATE = "https://freesound.org/apiv2/sounds/{sound_id}/download/"
 
 # Filter by license (e.g., 'cc0', 'by', 'by-sa', etc.)
 ALLOWED_LICENSES = ['cc0', 'by']
@@ -28,18 +36,57 @@ CATEGORY_MAPPING = {
 }
 
 # Initialize the metadata CSV file
-metadata_file = os.path.join(BASE_SAVE_DIR, 'metadata.csv')
+metadata_file = os.path.join(BASE_SAVE_DIR, 'raw_metadata.csv')
 with open(metadata_file, mode='w', newline='') as file:
     writer = csv.writer(file)
     # Write headers for the metadata CSV file
-    writer.writerow(['filename', 'category', 'tempo', 'tags', 'description', 'num_downloads', 'duration', 'license', 'username'])
+    writer.writerow(['filename', 'sound id', 'category', 'tempo', 'tags', 'description', 'num_downloads', 'duration', 'license', 'username'])
 
+def authorize_user():
+    """
+    Directs the user to the authorization URL to log in and authorize the app.
+    """
+    auth_url = f"{AUTH_URL}?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
+    print(f"Opening the authorization URL. Log in and authorize the app: {auth_url}")
+    webbrowser.open(auth_url)
+    auth_code = input("After authorizing, enter the authorization code here: ")
+    return auth_code
+
+def get_access_token(auth_code):
+    # Prepare the payload
+    payload = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': auth_code,
+    }
+
+    # Debug print to check the payload
+    print(f"Sending token request with payload: {payload}")
+
+    # Make the POST request to the access token endpoint
+    response = requests.post(TOKEN_URL, data=payload)
+    
+    # Debug print for the response
+    print(f"Response status code: {response.status_code}")
+    print(f"Response text: {response.text}")
+
+    # Handle response
+    if response.status_code == 200:
+        token_data = response.json()
+        print("Access Token:", token_data["access_token"])
+        print("Refresh Token:", token_data.get("refresh_token", "N/A"))
+        print("Token Scope:", token_data["scope"])
+        print("Expires In:", token_data["expires_in"])
+        return token_data
+    else:
+        raise Exception(f"Failed to obtain access token: {response.text}")
 
 def fetch_metadata(sound_id):
     url = f'{BASE_URL}sounds/{sound_id}/'
     analysis_url = f"{BASE_URL}sounds/{sound_id}/analysis/"
     headers = {
-        "Authorization": f"Token {API_KEY}"
+        "Authorization": f"Token {CLIENT_SECRET}"
     }
 
     try:
@@ -73,8 +120,8 @@ def fetch_metadata(sound_id):
 def search_sounds(query, num_results=10, license_filter=None):
     params = {
         'query': query,
-        'fields': 'id,name,tags,previews,license,num_downloads',
-        'token': API_KEY,
+        'fields': 'id,name,tags,previews,license,num_downloads,download',
+        'token': CLIENT_SECRET,
         'sort': 'num_downloads_desc',  # Sort by downloads in descending order
         'page_size': num_results  # Fetch top 'num_results' per request
     }
@@ -94,7 +141,11 @@ def search_sounds(query, num_results=10, license_filter=None):
     return []
 
 
-def download_sound(sound_id, sound_name, tags, preview_url, metadata):
+def download_sound(sound, metadata, access_token):
+    sound_id = sound['id']
+    sound_name = sound['name']
+    tags = sound['tags']
+
     # Determine the category based on tags
     category = 'others'  # Default category if no match is found
     for tag in tags:
@@ -109,12 +160,20 @@ def download_sound(sound_id, sound_name, tags, preview_url, metadata):
 
     # Download the sound using the provided preview URL
     try:
-        audio_data = requests.get(preview_url)
-        audio_data.raise_for_status()  # Raise an exception for bad status codes
-        file_path = os.path.join(category_dir, f'{sound_name}_{sound_id}.mp3')
-        with open(file_path, 'wb') as f:
-            f.write(audio_data.content)
-        print(f'Successfully downloaded: {sound_name}_{sound_id}.mp3')
+        url = DOWNLOAD_URL_TEMPLATE.format(sound_id=sound_id)
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        save_path = os.path.join(category_dir, sound_name)
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+            print(f"Sound downloaded successfully to {save_path}")
+        else:
+            print("Failed to download sound:", response.status_code, response.text)
         
         # Add metadata to CSV file
         with open(metadata_file, mode='a', newline='', encoding='utf-8') as file:
@@ -125,7 +184,8 @@ def download_sound(sound_id, sound_name, tags, preview_url, metadata):
 
             # Write metadata to the CSV
             writer.writerow([
-                f'{sound_name}_{sound_id}.mp3',  # File name
+                sound_name,                      # File name
+                sound_id,                        # Sound ID
                 category,                        # Category
                 tempo,                           # Tempo
                 ', '.join(tags),                 # Tags
@@ -151,11 +211,12 @@ if __name__ == '__main__':
     # Remove duplicate sounds based on their ID (if any)
     unique_sounds = {sound['id']: sound for sound in all_sounds}.values()
 
+    auth_code = authorize_user()
+    token_response = get_access_token(auth_code)
+    access_token = token_response["access_token"]
+
     # Process and download each sound
     for sound in unique_sounds:
-        sound_id = sound['id']
-        sound_name = sound['name']
-        tags = sound['tags']
-        preview_url = sound['previews']['preview-hq-mp3']  # Use the high-quality MP3 preview URL
-        metadata = fetch_metadata(sound_id)
-        download_sound(sound_id, sound_name, tags, preview_url, metadata)
+        
+        metadata = fetch_metadata(sound['id'])
+        download_sound(sound, metadata, access_token)
