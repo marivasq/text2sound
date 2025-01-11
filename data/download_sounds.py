@@ -2,6 +2,7 @@ import os
 import requests
 import csv
 import webbrowser
+import time
 
 # Set up the folder where the sounds will be saved
 BASE_SAVE_DIR = os.path.join(os.getcwd(), 'dataset', 'raw')
@@ -46,7 +47,7 @@ def authorize_user():
     """
     Directs the user to the authorization URL to log in and authorize the app.
     """
-    
+
     auth_url = f"{AUTH_URL}?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
     print(f"Opening the authorization URL. Log in and authorize the app: {auth_url}")
     webbrowser.open(auth_url)
@@ -243,7 +244,12 @@ if __name__ == '__main__':
     access_token = token_response["access_token"]
 
     # Process and download each sound
-    for sound in unique_sounds:
+    start_time = time.time()
+    for i, sound in enumerate(unique_sounds):
         
         metadata = fetch_metadata(sound['id'])
         download_sound(sound, metadata, access_token)
+
+        if i % 10 == 0:
+            curr_time = time.time()
+            print(f"Time elapsed to download {i} sounds: {curr_time - start_time}s\n")
