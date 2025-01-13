@@ -7,12 +7,13 @@ import noisereduce as nr
 
 # Define paths
 BASE_DIR = os.path.join(os.getcwd(), 'dataset')
+SPECTOGRAM_DIR = os.path.join(BASE_DIR, 'spectograms')
 
 RAW_AUDIO_FOLDER = os.path.join(BASE_DIR, 'raw')
-RAW_METADATA_FILE = os.path.join(BASE_DIR, 'raw_metadata.csv')
+RAW_METADATA_FILE = os.path.join(RAW_AUDIO_FOLDER, 'raw_metadata.csv')
 
 PROCESSED_AUDIO_FOLDER = os.path.join(BASE_DIR, 'processed')
-PROCESSED_METADATA_FILE = os.path.join(BASE_DIR, 'processed_metadata.csv')
+PROCESSED_METADATA_FILE = os.path.join(PROCESSED_AUDIO_FOLDER, 'processed_metadata.csv')
 
 
 # Ensure processed audio folder exists
@@ -23,7 +24,8 @@ def denoise_and_trim_silence(y, sr, noise_duration=0.5, top_db=20):
     Preprocess audio by dynamically denoising and trimming silence.
 
     Args:
-        filename (str): Path to the audio file.
+        y (numpy.ndarray): waveform
+        sr (int): sample rate or samples per second
         noise_duration (float): Duration in seconds for estimating noise.
         top_db (int): Threshold in decibels for trimming silence.
 
@@ -58,6 +60,10 @@ def denoise_and_trim_silence(y, sr, noise_duration=0.5, top_db=20):
 def convert_mono_and_normalize(y, sr): # TODO: fix later
     """
     Normalize audio to -1 to 1 range.
+
+    Args:
+        y (numpy.ndarray): waveform
+        sr (int): sample rate
     """
     try:
         # Convert to mono if not already
@@ -75,6 +81,10 @@ def convert_mono_and_normalize(y, sr): # TODO: fix later
 def resample_audio(y, sr, target_sr=16000):
     """
     Resample audio to target sample rate.
+
+    Args:
+        y (numpy.ndarray): waveform
+        sr (int): sample rate
     """
     # Resample to target sampling rate
     if sr != target_sr:
@@ -85,8 +95,50 @@ def resample_audio(y, sr, target_sr=16000):
 
     return y, target_sr
 
+def fix_audio_length(y, sr, target_length=2.0):
+    """
+    Standardize the length of the audio files.
+    """
+    target_samples = int(sr * target_length)
+    if len(y) > target_samples:
+        return y[:target_samples]
+    else:
+        return librosa.util.fix_length(y, size=target_samples)
+
+def audio_to_spectrogram(audio, sr, n_fft=2048, hop_length=512):
+    """
+    Use Short-Time Fourier Transform (STFT) to convert the audio signals into spectrograms.
+    """
+    stft = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+    spectrogram = np.abs(stft)
+    log_spectrogram = librosa.amplitude_to_db(spectrogram, ref=np.max)
+    return log_spectrogram
+
+def save_spectrograms(output_dir, spectrograms):
+    """
+    Save each spectrogram as a .npy file to speed up data loading during training.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    for i, spec in enumerate(spectrograms):
+        np.save(os.path.join(output_dir, f"spec_{i}.npy"), spec)
+
 def more():
     # Execute dynamic range compression, pitch/tempo standardization, and other adjustments ??
+    return
+
+def save_processed_file_by_format(path, y, sr):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == '.wav':
+        file_format = 'WAV'
+    elif ext == '.aif' or ext == '.aiff':
+        file_format = 'AIFF'
+    elif ext == '.flac':
+        file_format = 'FLAC'
+    else:
+        print(path)
+        raise ValueError(f"Unsupported file extension: {ext}")
+
+    sf.write(path, y, sr, format=file_format)
     return
 
 def process_dataset():
@@ -98,18 +150,19 @@ def process_dataset():
         return
 
     # Load metadata
-    with open(PROCESSED_METADATA_FILE, mode='r') as file:
+    with open(RAW_METADATA_FILE, mode='r', encoding="utf-8") as file:
         reader = csv.reader(file)
         header = next(reader)
         rows = list(reader)
 
     # Prepare new metadata entries
     updated_rows = []
+    spectrograms = []
     for row in rows:
-        file_name, category, tempo, tags, description, num_downloads, duration, license_url, username = row
-        FILE_PATH = os.path.join(category, file_name)
-        raw_audio_path = os.path.join(RAW_AUDIO_FOLDER, FILE_PATH)
-        processed_audio_path = os.path.join(PROCESSED_AUDIO_FOLDER, FILE_PATH)
+        file_name, sound_id, category, tempo, tags, description, num_downloads, duration, license_url, username = row
+        PROCESSED_SUBFOLDER = os.path.join(PROCESSED_AUDIO_FOLDER, category)
+        processed_audio_path = os.path.join(PROCESSED_SUBFOLDER, file_name)
+        raw_audio_path = os.path.join(RAW_AUDIO_FOLDER, category, file_name)
 
         # Process audio if it exists
         if os.path.exists(raw_audio_path):
@@ -120,14 +173,25 @@ def process_dataset():
             audio, sr = denoise_and_trim_silence(audio, sr)
             audio, sr = convert_mono_and_normalize(audio, sr)
             audio, sr = resample_audio(audio, sr)
+            audio = fix_audio_length(audio, sr)
+
+            # Make new processed subdirectory
+            os.makedirs(PROCESSED_SUBFOLDER, exist_ok=True)
 
             # Save the processed file
-            sf.write(processed_audio_path, audio, sr)
+            save_processed_file_by_format(processed_audio_path, audio, sr)
+
+            # Create spectogram
+            spectrogram = audio_to_spectrogram(audio, sr)
+            spectrograms.append(spectrogram)
 
             # Add processed file path to metadata
-            updated_rows.append([file_name, category, tempo, tags, description, num_downloads, duration, license_url, username])
+            updated_rows.append([file_name, sound_id, category, tempo, tags, description, num_downloads, duration, license_url, username])
         else:
             print(f"Raw audio file not found: {raw_audio_path}")
+
+    # Save spectograms
+    save_spectrograms(SPECTOGRAM_DIR, spectrograms)
 
     # Save updated metadata
     with open(PROCESSED_METADATA_FILE, mode='w', newline='') as file:

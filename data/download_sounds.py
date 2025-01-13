@@ -14,8 +14,8 @@ os.makedirs(BASE_SAVE_DIR, exist_ok=True)
 BASE_URL = 'https://freesound.org/apiv2/'
 
 # Replace these with your credentials
-CLIENT_ID = ''
-CLIENT_SECRET = ''
+CLIENT_ID = 'eGyAE2IwOcnrWvu6qdOq'
+CLIENT_SECRET = 'xSfYrBDk9tje3YXqhE5UogtTutc1jWVTqnNsTt2v'
 REDIRECT_URI = "https://freesound.org/home/app_permissions/permission_granted/"
 TOKEN_URL = "https://freesound.org/apiv2/oauth2/access_token/"
 AUTH_URL = "https://freesound.org/apiv2/oauth2/authorize/"
@@ -139,7 +139,7 @@ def search_sounds(query, num_results=10, license_filter=None):
     Collects (int) num_results sounds based on the query which denotes the category.
 
     Returns:
-        array: An array of dictionaries where each one coressponds to a unique sound collected.
+        array: An array of dictionaries where each one corresponds to a unique sound collected.
     """
 
     params = {
@@ -157,8 +157,16 @@ def search_sounds(query, num_results=10, license_filter=None):
         # Filter by license if applicable
         if license_filter:
             results['results'] = [sound for sound in results['results'] if sound['license'] in license_filter]
+
+        # Filter for sounds with '.wav' in the name
+        wav_sounds = [
+            sound for sound in results['results']
+            if 'name' in sound and sound['name'].lower().endswith('.wav')
+        ]
+
+        return wav_sounds  # Return only WAV sounds
         
-        return results['results']  # Return all results, already sorted by downloads
+        #return results['results']  # Return all results, already sorted by downloads
     else:
         print(f"Failed to fetch sounds: {response.status_code}")
     
@@ -252,4 +260,4 @@ if __name__ == '__main__':
 
         if i % 10 == 0:
             curr_time = time.time()
-            print(f"Time elapsed to download {i} sounds: {curr_time - start_time}s\n")
+            print(f"Time elapsed to download {i} sounds: {(curr_time - start_time) / 60.0:.2f}mins\n")
