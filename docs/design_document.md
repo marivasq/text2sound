@@ -59,8 +59,8 @@ Develop a DAW plugin that generates editable sound effects from textual descript
 ### Phases:
 1. **Research and Data Collection**
    - Literature Review 🗹
-   - Dataset Sourcing 
-   - Data Preprocessing
+   - Dataset Sourcing 🗹
+   - Data Preprocessing 🗹
    - Define Evaluation Metrics
 2. **Model Training and Fine Tuning**
    - GAN Architecture Selection 
@@ -82,8 +82,8 @@ Develop a DAW plugin that generates editable sound effects from textual descript
 
 ## Dataset & Training
 
-- **Dataset Sources:** AudioCaps, AudioSet, or custom dataset
-- **Preprocessing:** Tokenize text prompts and normalize audio
+- **Dataset Sources:** Freesound, Other options: AudioCaps, AudioSet, or custom dataset
+- **Preprocessing:** Normalize audio (and Tokenize text prompts?)
 - **Evaluation Metrics:** Frechet Audio Distance (FAD), cosine similarity
 
 ## Testing & Quality Assurance
