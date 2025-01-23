@@ -61,7 +61,7 @@ Develop a DAW plugin that generates editable sound effects from textual descript
    - Literature Review 🗹
    - Dataset Sourcing 🗹
    - Data Preprocessing 🗹
-   - Define Evaluation Metrics
+   - Data Analysis & Evaluation Metrics
 2. **Model Training and Fine Tuning**
    - GAN Architecture Selection 
    - Model Implementation
