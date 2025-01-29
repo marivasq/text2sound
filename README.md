@@ -1,5 +1,5 @@
 # text2sound
-## [Site](https://marivasq.github.io/pages/daw.html) * Video (add link)
+## [Site](https://marivasq.github.io/pages/text2sound.html) * Video (add link)
 
 A DAW plugin that generates editable sound effects from textual descriptions using AI.
 
