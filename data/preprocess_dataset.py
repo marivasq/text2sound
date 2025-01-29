@@ -1,13 +1,22 @@
+"""
+Preprocess the raw data and metadata.
+"""
+
 import os
 import csv
 import librosa
 import numpy as np
 import soundfile as sf
 import noisereduce as nr
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Get the directory of the currently running script
+current_script_dir = os.path.dirname(__file__)
 
 # Define paths
-BASE_DIR = os.path.join(os.getcwd(), 'dataset')
+BASE_DIR = os.path.join(current_script_dir, 'dataset')
 SPECTOGRAM_DIR = os.path.join(BASE_DIR, 'spectograms')
+EMBEDDING_DIR = os.path.join(BASE_DIR, 'embeddings')
 
 RAW_AUDIO_FOLDER = os.path.join(BASE_DIR, 'raw')
 RAW_METADATA_FILE = os.path.join(RAW_AUDIO_FOLDER, 'raw_metadata.csv')
@@ -120,7 +129,25 @@ def save_spectrograms(output_dir, spectrograms):
     """
     os.makedirs(output_dir, exist_ok=True)
     for i, spec in enumerate(spectrograms):
-        np.save(os.path.join(output_dir, f"spec_{i}.npy"), spec)
+        filepath = os.path.join(output_dir, f"spec_{i}.npy")
+        np.save(filepath, spec)
+
+def save_text_embedding(output_dir, text) -> np.ndarray:
+    """
+    Tokenize the text descriptions (and tags) and convert them into word embeddings 
+    (e.g., using pre-trained models like Word2Vec, GloVe, or BERT).
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    vectorizer = TfidfVectorizer()
+    for i, t in enumerate(text):
+        # Initialize the TF-IDF vectorizer
+        text_features = vectorizer.fit_transform(t)
+
+        # Convert to dense array
+        text_features_dense = text_features.toarray()
+        filepath = os.path.join(output_dir, f"embedding_{i}.npy")
+        np.save(filepath, text_features_dense)
 
 def more():
     # Execute dynamic range compression, pitch/tempo standardization, and other adjustments ??
@@ -158,6 +185,7 @@ def process_dataset():
     # Prepare new metadata entries
     updated_rows = []
     spectrograms = []
+    text_embeddings = []
     for row in rows:
         file_name, sound_id, category, tempo, tags, description, num_downloads, duration, license_url, username = row
         PROCESSED_SUBFOLDER = os.path.join(PROCESSED_AUDIO_FOLDER, category)
@@ -185,6 +213,10 @@ def process_dataset():
             spectrogram = audio_to_spectrogram(audio, sr)
             spectrograms.append(spectrogram)
 
+            # Create text embeddings
+            embedding = audio_to_spectrogram(audio, sr)
+            text_embeddings.append(embedding)
+
             # Add processed file path to metadata
             updated_rows.append([file_name, sound_id, category, tempo, tags, description, num_downloads, duration, license_url, username])
         else:
@@ -192,6 +224,9 @@ def process_dataset():
 
     # Save spectograms
     save_spectrograms(SPECTOGRAM_DIR, spectrograms)
+
+    # Save text-embeddings
+    save_text_embedding(EMBEDDING_DIR, text_embeddings)
 
     # Save updated metadata
     with open(PROCESSED_METADATA_FILE, mode='w', newline='') as file:

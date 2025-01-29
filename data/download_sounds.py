@@ -1,11 +1,16 @@
+"""
+Download sounds using FreeSound API.
+"""
+
 import os
 import requests
 import csv
 import webbrowser
 import time
 
-# Set up the folder where the sounds will be saved
-BASE_SAVE_DIR = os.path.join(os.getcwd(), 'dataset', 'raw')
+# Get the directory of the currently running script
+current_script_dir = os.path.dirname(__file__)
+BASE_SAVE_DIR = os.path.join(current_script_dir, 'dataset', 'raw')
 
 # Ensure the directory exists
 os.makedirs(BASE_SAVE_DIR, exist_ok=True)
