@@ -132,7 +132,7 @@ def save_spectrograms(output_dir, spectrograms):
         filepath = os.path.join(output_dir, f"spec_{i}.npy")
         np.save(filepath, spec)
 
-def save_text_embedding(output_dir, text) -> np.ndarray:
+def save_text_embedding(output_dir, text):
     """
     Tokenize the text descriptions (and tags) and convert them into word embeddings 
     (e.g., using pre-trained models like Word2Vec, GloVe, or BERT).
@@ -140,14 +140,14 @@ def save_text_embedding(output_dir, text) -> np.ndarray:
     os.makedirs(output_dir, exist_ok=True)
 
     vectorizer = TfidfVectorizer()
-    for i, t in enumerate(text):
-        # Initialize the TF-IDF vectorizer
-        text_features = vectorizer.fit_transform(t)
+    
+    # Fit and transform the entire list of texts at once
+    text_features = vectorizer.fit_transform(text).toarray()
 
-        # Convert to dense array
-        text_features_dense = text_features.toarray()
+    # Save each row (document embedding) separately
+    for i, features in enumerate(text_features):
         filepath = os.path.join(output_dir, f"embedding_{i}.npy")
-        np.save(filepath, text_features_dense)
+        np.save(filepath, features)
 
 def more():
     # Execute dynamic range compression, pitch/tempo standardization, and other adjustments ??
@@ -214,8 +214,7 @@ def process_dataset():
             spectrograms.append(spectrogram)
 
             # Create text embeddings
-            embedding = audio_to_spectrogram(audio, sr)
-            text_embeddings.append(embedding)
+            text_embeddings.append(description)
 
             # Add processed file path to metadata
             updated_rows.append([file_name, sound_id, category, tempo, tags, description, num_downloads, duration, license_url, username])

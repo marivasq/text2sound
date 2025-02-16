@@ -19,8 +19,8 @@ os.makedirs(BASE_SAVE_DIR, exist_ok=True)
 BASE_URL = 'https://freesound.org/apiv2/'
 
 # Replace these with your credentials
-CLIENT_ID = 'eGyAE2IwOcnrWvu6qdOq'
-CLIENT_SECRET = 'xSfYrBDk9tje3YXqhE5UogtTutc1jWVTqnNsTt2v'
+CLIENT_ID = ''
+CLIENT_SECRET = ''
 REDIRECT_URI = "https://freesound.org/home/app_permissions/permission_granted/"
 TOKEN_URL = "https://freesound.org/apiv2/oauth2/access_token/"
 AUTH_URL = "https://freesound.org/apiv2/oauth2/authorize/"
