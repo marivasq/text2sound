@@ -4,18 +4,19 @@ import numpy as np
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
 # TODO: Finish later. Maybe add an inference file and checkpoint folder.
 
-# Get the directory of the currently running script
+# Get the directory of the currently running script (ie /models)
 current_script_dir = os.path.dirname(__file__)
 
-# Get the parent directory
+# Get the parent directory (ie /text2sound)
 parent_dir = os.path.dirname(current_script_dir)
 
-BASE_DIR = os.path.join(parent_dir, 'data', 'dataset')
-SPECTOGRAM_DIR = os.path.join(BASE_DIR, 'spectograms')
-EMBEDDING_DIR = os.path.join(BASE_DIR, 'embeddings')
+DATASET_DIR = os.path.join(parent_dir, 'data', 'dataset')
+SPECTOGRAM_DIR = os.path.join(DATASET_DIR, 'spectograms')
+EMBEDDING_DIR = os.path.join(DATASET_DIR, 'embeddings')
 
 # Sample file to find dimension
 spectogram_file = os.path.join(SPECTOGRAM_DIR, 'spec_0.npy')
@@ -43,15 +44,20 @@ class TextToSoundDataset(Dataset):
         text_embedding = np.load(embedding_file)
         spectrogram = np.load(spectrogram_file)
 
-        print("Text Embedding Shape:", text_embedding.shape)
-        print("Spectrogram Shape:", spectrogram.shape)
-
-        if spectrogram.shape != (128, 128):
-            raise ValueError(f"Unexpected spectrogram shape: {spectrogram.shape} for index {idx}")
-
         # Convert to PyTorch tensors
         text_embedding = torch.tensor(text_embedding, dtype=torch.float32)
         spectrogram = torch.tensor(spectrogram, dtype=torch.float32)
+
+        # Resize spectrogram to (128, 128)
+        spectrogram = spectrogram.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimension (1, 1, 1025, 63)
+        spectrogram = F.interpolate(spectrogram, size=(128, 128), mode="bilinear", align_corners=False)
+        spectrogram = spectrogram.squeeze(0).squeeze(0)  # Remove batch and channel dimension
+
+        if spectrogram.shape != (128, 128):
+            raise ValueError(f"Unexpected spectrogram shape: {spectrogram.shape} for index {idx}")
+        
+        print("Text Embedding Shape:", text_embedding.shape)
+        print("Spectrogram Shape:", spectrogram.shape)
 
         return {
             "text_embedding": text_embedding,
@@ -109,6 +115,7 @@ def main():
 
     temp = np.load(embedding_file)
     text_embedding_dim = temp.shape[0]
+    print('text_embedding_dim', text_embedding_dim)
 
     generator = Generator(text_embedding_dim, latent_dim)
     discriminator = Discriminator(text_embedding_dim)
@@ -174,8 +181,11 @@ def main():
                     f"D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
         # TODO: add save checkpoint?
 
-    torch.save(generator.state_dict(), 'generator_final.pth')
-    torch.save(discriminator.state_dict(), 'discriminator_final.pth')
+    # save trained models
+    generator_file = os.path.join(current_script_dir, 'generator_final.pth')
+    discriminator_file = os.path.join(current_script_dir, 'discriminator_final.pth')
+    torch.save(generator.state_dict(), generator_file)
+    torch.save(discriminator.state_dict(), discriminator_file)
 
 if __name__ == '__main__':
     main()
