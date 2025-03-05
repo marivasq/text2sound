@@ -8,7 +8,7 @@ import torch
 import librosa
 import soundfile as sf
 import numpy as np
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSlider, QPushButton
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSlider, QPushButton, QLineEdit
 from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -27,23 +27,28 @@ generator.eval()
 class SoundGeneratorUI(QWidget):
     def __init__(self):
         super().__init__()
-
+        self.num_pcs = 10
         self.initUI()
         
     def initUI(self):
         layout = QVBoxLayout()
 
-        self.label = QLabel("Move sliders to generate sound!")
+        self.label = QLabel("Enter text and adjust sliders to generate sound:")
         layout.addWidget(self.label)
 
         self.sliders = []
-        for _ in range(3):
-            slider = QSlider(Qt.Orientation.Horizontal)
+        for i in range(self.num_pcs):
+            slider_layout = QHBoxLayout()
+            slider_label = QLabel(f"PC {i+1}:")
+            slider = QSlider(Qt.Horizontal)
             slider.setMinimum(-20)
             slider.setMaximum(20)
             slider.setValue(0)
             slider.setTickInterval(1)
-            layout.addWidget(slider)
+            slider.setTickPosition(QSlider.TicksBelow)
+            slider_layout.addWidget(slider_label)
+            slider_layout.addWidget(slider)
+            layout.addLayout(slider_layout)
             self.sliders.append(slider)
 
         self.generateButton = QPushButton("Generate Sound")
@@ -55,6 +60,10 @@ class SoundGeneratorUI(QWidget):
         self.show()
 
     def generate_sound(self):
+        input_text = self.text_input.text()
+        if not input_text:
+            self.label.setText("Please enter text to generate sound.")
+            return
         text_embedding = torch.randn(1, 256)  # Replace with real embedding
 
         latent_vector = torch.tensor([[s.value() / 10.0 for s in self.sliders] + [0] * (126 - len(self.sliders))])
