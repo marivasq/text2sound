@@ -11,11 +11,17 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSlider, QPushButton
 from PyQt6.QtCore import Qt
 
-from model_architecture import Generator  # Import your model
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from models.model_architecture import Generator
+
+# File path to generator
+current_script_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_script_dir)
+file_path = os.path.join(parent_dir, 'models', 'generator_final.pth')
 
 # Load trained generator
-generator = Generator(text_embedding_dim=512, latent_dim=128)
-generator.load_state_dict(torch.load("final_generator.pth"))
+generator = Generator(text_embedding_dim=256, latent_dim=126)
+generator.load_state_dict(torch.load(file_path))
 generator.eval()
 
 class SoundGeneratorUI(QWidget):
@@ -49,13 +55,26 @@ class SoundGeneratorUI(QWidget):
         self.show()
 
     def generate_sound(self):
-        text_embedding = torch.randn(1, 512)  # Replace with real embedding
+        text_embedding = torch.randn(1, 256)  # Replace with real embedding
 
-        latent_vector = torch.tensor([[s.value() / 10.0 for s in self.sliders] + [0] * (128 - 3)])
-        spectrogram = generator(text_embedding, latent_vector).detach().numpy()[0]
+        latent_vector = torch.tensor([[s.value() / 10.0 for s in self.sliders] + [0] * (126 - len(self.sliders))])
+        with torch.no_grad():
+            spectrogram = generator(text_embedding, latent_vector).cpu().numpy()[0]
 
         waveform = librosa.feature.inverse.mel_to_audio(spectrogram)
-        sf.write("generated.wav", waveform, 22050)
+
+        # Ensure waveform is a 1-dimensional float32 array
+        if waveform.ndim > 1:
+            waveform = waveform.squeeze()
+        waveform = waveform.astype('float32')
+
+        # Check for empty or invalid data
+        if waveform.size == 0:
+            raise ValueError("Waveform is empty.")
+        if not np.isfinite(waveform).all():
+            raise ValueError("Waveform contains invalid values.")
+
+        sf.write('generated.wav', waveform, 22050)
 
         self.label.setText("Sound Generated! Check 'generated.wav'.")
 
