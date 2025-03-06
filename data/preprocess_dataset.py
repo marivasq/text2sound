@@ -5,6 +5,7 @@ Preprocess the raw data and metadata.
 import os
 import csv
 import librosa
+import pickle
 import numpy as np
 import soundfile as sf
 import noisereduce as nr
@@ -148,6 +149,13 @@ def save_text_embedding(output_dir, text):
     for i, features in enumerate(text_features):
         filepath = os.path.join(output_dir, f"embedding_{i}.npy")
         np.save(filepath, features)
+
+    # Save the trained TfidfVectorizer
+    vectorizer_filepath = os.path.join(output_dir, 'tfidf_vectorizer.pkl')
+    with open(vectorizer_filepath, 'wb') as file:
+        pickle.dump(vectorizer, file)
+
+    print(f"Saved {len(text_features)} embeddings and the TfidfVectorizer to '{output_dir}'.")
 
 def more():
     # Execute dynamic range compression, pitch/tempo standardization, and other adjustments ??
