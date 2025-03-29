@@ -10,6 +10,7 @@ import librosa
 import soundfile as sf
 import numpy as np
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QSlider, QPushButton, QLineEdit, QHBoxLayout
+from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtCore import Qt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -47,12 +48,12 @@ class SoundGeneratorUI(QWidget):
         for i in range(self.num_pcs):
             slider_layout = QHBoxLayout()
             slider_label = QLabel(f"PC {i+1}:")
-            slider = QSlider(Qt.Horizontal)
+            slider = QSlider(Qt.Orientation.Horizontal)
             slider.setMinimum(-20)
             slider.setMaximum(20)
             slider.setValue(0)
             slider.setTickInterval(1)
-            slider.setTickPosition(QSlider.TicksBelow)
+            slider.setTickPosition(QSlider.TickPosition.TicksBelow)
             slider_layout.addWidget(slider_label)
             slider_layout.addWidget(slider)
             layout.addLayout(slider_layout)
@@ -66,7 +67,7 @@ class SoundGeneratorUI(QWidget):
         self.setWindowTitle("Text-to-Sound Generator")
         self.show()
 
-    def load_vectorizer(vectorizer_path):
+    def load_vectorizer(self, vectorizer_path):
         """
         Load a previously saved TfidfVectorizer.
         """
@@ -75,20 +76,23 @@ class SoundGeneratorUI(QWidget):
         return vectorizer
 
     def generate_sound(self):
-        input_text = self.text_input.text()
+        input_text = self.text_input.text().split()
 
         if not input_text:
             self.label.setText("Please enter text to generate sound.")
             return
         
         vectorizer = self.load_vectorizer(VECTORIZER_FILE)
-        text_embedding = vectorizer.transform(input_text).toarray()
+        text_embedding = vectorizer.transform(input_text)  # This is a sparse matrix
+        text_embedding = text_embedding.toarray()  # Convert to a dense NumPy array
+        tensor_vector = torch.tensor(text_embedding, dtype=torch.float32)  # Convert to a tensor
 
         #text_embedding = torch.randn(1, 256)  # Replace with real embedding
 
-        latent_vector = torch.tensor([[s.value() / 10.0 for s in self.sliders] + [0] * (126 - len(self.sliders))])
+        latent_vector = torch.tensor([[s.value() / 10.0 for s in self.sliders] + [0] * (100 - len(self.sliders))])
+        
         with torch.no_grad():
-            spectrogram = generator(text_embedding, latent_vector).cpu().numpy()[0]
+            spectrogram = generator(tensor_vector, latent_vector).cpu().numpy()[0]
 
         waveform = librosa.feature.inverse.mel_to_audio(spectrogram)
 
@@ -103,9 +107,19 @@ class SoundGeneratorUI(QWidget):
         if not np.isfinite(waveform).all():
             raise ValueError("Waveform contains invalid values.")
 
-        sf.write('generated.wav', waveform, 22050)
+        # Open a "Save As" dialog
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        file_dialog.setNameFilters(["WAV Files (*.wav)", "All Files (*)"])
+        file_dialog.setDefaultSuffix("wav")
 
-        self.label.setText("Sound Generated! Check 'generated.wav'.")
+        if file_dialog.exec():
+            file_path = file_dialog.selectedFiles()[0]  # Get the selected file path
+
+            sf.write(file_path, waveform, 22050)
+            self.label.setText(f"Sound saved as: {file_path}")
+        else:
+            self.label.setText("Save operation canceled.")
 
 app = QApplication(sys.argv)
 ex = SoundGeneratorUI()
