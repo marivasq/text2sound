@@ -39,7 +39,7 @@ Develop a DAW plugin that generates editable sound effects from textual descript
 
 ### GAN Options:
 - **WaveGAN**  
-  A GAN architecture designed specifically for audio waveform synthesis.
+  A GAN architecture designed specifically for audio waveform synthesis. Better for datasets over 10k and slower inference than SpecGAN.
   
 - **StyleGAN**  
   Known for its latent space manipulation, StyleGAN can be adapted to work with audio features instead of images.
@@ -51,7 +51,7 @@ Develop a DAW plugin that generates editable sound effects from textual descript
   Developed by Google Magenta, it generates high-quality audio samples in a musical context.
 
 ### Conclusion:
-- **SpecGAN**  
+- **Conditional SpecGAN**  
   _Justification:_ Spectrogram-based GANs align well with text embeddings and allow for detailed sound editing in the frequency domain.
 
 ## Implementation Plan
